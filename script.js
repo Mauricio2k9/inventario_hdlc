@@ -95,18 +95,14 @@ function exportToExcel(fileName = 'reporte') {
 
 // Función para inicializar el sidebar
 function initSidebar() {
-    const currentPage = window.location.pathname.split('/').pop().replace('.html', '');
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
     const menuItems = document.querySelectorAll('.sidebar-menu a');
     
     menuItems.forEach(item => {
-        const page = item.getAttribute('onclick').match(/showSection\('(.*?)'\)/)[1];
-        if (page === currentPage) {
+        const href = item.getAttribute('href');
+        if (href === currentPage || (currentPage === '' && href === 'index.html')) {
             item.classList.add('active');
         }
-        
-        // Actualizar el href para navegación
-        item.href = `${page}.html`;
-        item.removeAttribute('onclick');
     });
 }
 
@@ -127,20 +123,20 @@ function initTopNavbar() {
     
     // Actualizar título de la página actual
     const pageTitles = {
-        'dashboard': 'Dashboard',
-        'inventory': 'Inventario',
-        'add-product': 'Agregar Producto',
-        'movements': 'Movimientos',
-        'suppliers': 'Proveedores',
-        'barcode': 'Escanear Código',
-        'reports': 'Reportes',
-        'report-stock': 'Reporte de Stock',
-        'report-movements': 'Reporte de Movimientos',
-        'report-low-stock': 'Productos con Stock Bajo',
-        'report-suppliers': 'Reporte de Proveedores'
+        'index.html': 'Dashboard',
+        'inventory.html': 'Inventario',
+        'add-product.html': 'Agregar Producto',
+        'movements.html': 'Movimientos',
+        'suppliers.html': 'Proveedores',
+        'barcode.html': 'Escanear',
+        'reports.html': 'Reportes',
+        'report-stock.html': 'Reporte de Stock',
+        'report-movements.html': 'Reporte de Movimientos',
+        'report-low-stock.html': 'Productos con Stock Bajo',
+        'report-suppliers.html': 'Reporte de Proveedores'
     };
     
-    const currentPage = window.location.pathname.split('/').pop().replace('.html', '');
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
     const titleElement = document.getElementById('current-section-title');
     
     if (titleElement && pageTitles[currentPage]) {
