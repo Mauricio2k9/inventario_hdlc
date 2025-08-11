@@ -119,42 +119,50 @@
         });
 
         function loadInventory() {
-            const products = JSON.parse(localStorage.getItem('products')) || [];
-            const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
-            const tbody = document.getElementById('inventory-table-body');
-            
-            tbody.innerHTML = products.map(product => {
-                const supplier = suppliers.find(s => s.id === product.proveedor_id);
-                return `
-                    <tr>
-                        <td>${product.id}</td>
-                        <td>${product.nombre}</td>
-                        <td>${product.categoria}</td>
-                        <td>${supplier ? supplier.nombre : 'N/A'}</td>
-                        <td class="${product.stock_actual <= product.stock_minimo ? 'text-warning' : ''}">
-                            ${product.stock_actual}
-                            ${product.stock_actual <= product.stock_minimo ? '<i class="fas fa-exclamation-circle"></i>' : ''}
-                        </td>
-                        <td>$${product.precio ? product.precio.toFixed(2) : '0.00'}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="confirmDeleteProduct(${product.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            document.getElementById('inventory-info').textContent = `Mostrando ${products.length} productos`;
+            fetch('api_products.php?action=all')
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    const products = data.data;
+                    const tbody = document.getElementById('inventory-table-body');
+                    
+                    tbody.innerHTML = products.map(product => {
+                        return `
+                            <tr>
+                                <td>${product.id}</td>
+                                <td>${product.nombre}</td>
+                                <td>${product.categoria}</td>
+                                <td>${product.proveedor_nombre || 'N/A'}</td>
+                                <td class="${product.stock_actual <= product.stock_minimo ? 'text-warning' : ''}">
+                                    ${product.stock_actual}
+                                    ${product.stock_actual <= product.stock_minimo ? '<i class="fas fa-exclamation-circle"></i>' : ''}
+                                </td>
+                                <td>$${product.precio ? parseFloat(product.precio).toFixed(2) : '0.00'}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteProduct(${product.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('inventory-info').textContent = `Mostrando ${products.length} productos`;
+                    window.allProducts = products; // Store for filtering
+                }
+            })
+            .catch(error => {
+                console.error('Error loading inventory:', error);
+                showNotification('Error al cargar el inventario', 'error');
+            });
         }
 
         function filterInventory() {
             const searchTerm = document.getElementById('search').value.toLowerCase();
-            const products = JSON.parse(localStorage.getItem('products')) || [];
-            const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+            const products = window.allProducts || [];
             
             const filteredProducts = searchTerm ? products.filter(p => 
                 p.nombre.toLowerCase().includes(searchTerm) || 
@@ -164,18 +172,17 @@
             
             const tbody = document.getElementById('inventory-table-body');
             tbody.innerHTML = filteredProducts.map(product => {
-                const supplier = suppliers.find(s => s.id === product.proveedor_id);
                 return `
                     <tr>
                         <td>${product.id}</td>
                         <td>${product.nombre}</td>
                         <td>${product.categoria}</td>
-                        <td>${supplier ? supplier.nombre : 'N/A'}</td>
+                        <td>${product.proveedor_nombre || 'N/A'}</td>
                         <td class="${product.stock_actual <= product.stock_minimo ? 'text-warning' : ''}">
                             ${product.stock_actual}
                             ${product.stock_actual <= product.stock_minimo ? '<i class="fas fa-exclamation-circle"></i>' : ''}
                         </td>
-                        <td>$${product.precio ? product.precio.toFixed(2) : '0.00'}</td>
+                        <td>$${product.precio ? parseFloat(product.precio).toFixed(2) : '0.00'}</td>
                         <td>
                             <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">
                                 <i class="fas fa-edit"></i>
@@ -208,11 +215,22 @@
                 'Eliminar Producto', 
                 `¿Estás seguro de que deseas eliminar este producto?`, 
                 function() {
-                    const products = JSON.parse(localStorage.getItem('products')) || [];
-                    const updatedProducts = products.filter(p => p.id !== id);
-                    localStorage.setItem('products', JSON.stringify(updatedProducts));
-                    loadInventory();
-                    showNotification('Producto eliminado correctamente', 'success');
+                    fetch(`api_products.php?action=delete&id=${id}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if(data.success) {
+                            loadInventory();
+                            showNotification('Producto eliminado correctamente', 'success');
+                        } else {
+                            showNotification('Error al eliminar producto: ' + data.error, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('Error de conexión', 'error');
+                    });
                 }
             );
         }

@@ -139,42 +139,55 @@
             }
 
             function processScannedBarcode(code) {
-                const products = JSON.parse(localStorage.getItem('products')) || [];
-                const product = products.find(p => p.codigo === code);
-                currentScannedProduct = product;
+                // Buscar el producto en la base de datos por código de barras
+                fetch('api_products.php?action=all')
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        const products = data.data;
+                        const product = products.find(p => p.codigo === code);
+                        currentScannedProduct = product;
 
-                const resultDiv = document.getElementById('barcode-result');
-                const actionsDiv = document.getElementById('barcode-actions');
+                        const resultDiv = document.getElementById('barcode-result');
+                        const actionsDiv = document.getElementById('barcode-actions');
 
-                if (product) {
-                    resultDiv.innerHTML = `
-                    <h4>Producto encontrado:</h4>
-                    <p><strong>Nombre:</strong> ${product.nombre}</p>
-                    <p><strong>Código:</strong> ${product.codigo}</p>
-                    <p><strong>Stock actual:</strong> ${product.stock_actual}</p>
-                `;
+                        if (product) {
+                            resultDiv.innerHTML = `
+                            <h4>Producto encontrado:</h4>
+                            <p><strong>Nombre:</strong> ${product.nombre}</p>
+                            <p><strong>Código:</strong> ${product.codigo}</p>
+                            <p><strong>Stock actual:</strong> ${product.stock_actual}</p>
+                        `;
 
-                    // Mostrar acciones para entrada/salida
-                    actionsDiv.style.display = 'block';
-                    document.getElementById('barcode-quantity').value = 1;
-                    document.getElementById('barcode-type').value = 'entry';
-                    document.getElementById('barcode-reason').value = '';
+                            // Mostrar acciones para entrada/salida
+                            actionsDiv.style.display = 'block';
+                            document.getElementById('barcode-quantity').value = 1;
+                            document.getElementById('barcode-type').value = 'entry';
+                            document.getElementById('barcode-reason').value = '';
 
-                    // Enfocar el campo de cantidad
-                    document.getElementById('barcode-quantity').focus();
-                } else {
-                    resultDiv.innerHTML = `
-                    <h4>Producto no registrado</h4>
-                    <p>El código de barras ${code} no está asociado a ningún producto.</p>
-                    <button class="btn btn-primary" onclick="registerNewProductFromBarcode('${code}')">
-                        <i class="fas fa-plus"></i> Registrar nuevo producto
-                    </button>
-                `;
-                    actionsDiv.style.display = 'none';
-                }
+                            // Enfocar el campo de cantidad
+                            document.getElementById('barcode-quantity').focus();
+                        } else {
+                            resultDiv.innerHTML = `
+                            <h4>Producto no registrado</h4>
+                            <p>El código de barras ${code} no está asociado a ningún producto.</p>
+                            <button class="btn btn-primary" onclick="registerNewProductFromBarcode('${code}')">
+                                <i class="fas fa-plus"></i> Registrar nuevo producto
+                            </button>
+                        `;
+                            actionsDiv.style.display = 'none';
+                        }
 
-                // Volver a enfocar el campo de escaneo
-                document.getElementById('barcode-input').focus();
+                        // Volver a enfocar el campo de escaneo
+                        document.getElementById('barcode-input').focus();
+                    } else {
+                        showNotification('Error al buscar producto: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error de conexión al buscar producto', 'error');
+                });
             }
 
             function registerNewProductFromBarcode(barcode) {
@@ -193,56 +206,49 @@
                     return;
                 }
 
-                // Actualizar productos
-                const products = JSON.parse(localStorage.getItem('products')) || [];
-                const productIndex = products.findIndex(p => p.codigo === currentScannedProduct.codigo);
-
-                if (productIndex === -1) return;
-
-                if (type === 'entry') {
-                    products[productIndex].stock_actual += quantity;
-                } else {
-                    if (products[productIndex].stock_actual < quantity) {
-                        showNotification('No hay suficiente stock para este movimiento', 'error');
-                        return;
-                    }
-                    products[productIndex].stock_actual -= quantity;
-                }
-
-                localStorage.setItem('products', JSON.stringify(products));
-
-                // Registrar movimiento
-                const movements = JSON.parse(localStorage.getItem('movements')) || [];
-                const newMovement = {
-                    id: movements.length > 0 ? Math.max(...movements.map(m => m.id)) + 1 : 1,
+                // Preparar datos del movimiento para enviar a la API
+                const movementData = {
                     producto_id: currentScannedProduct.id,
                     tipo: type,
                     producto: currentScannedProduct.nombre,
                     cantidad: quantity,
                     motivo: reason,
-                    usuario: 'admin', // Esto debería ser el usuario actual
-                    fecha: new Date().toISOString().split('T')[0]
+                    usuario: 'admin'
                 };
 
-                movements.unshift(newMovement);
-                localStorage.setItem('movements', JSON.stringify(movements));
+                // Enviar el movimiento a la API
+                fetch('api_movements.php?action=add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(movementData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        showNotification(`Movimiento registrado: ${type === 'entry' ? 'Entrada' : 'Salida'} de ${quantity} unidades de ${currentScannedProduct.nombre}`, 'success');
 
-                showNotification(`Movimiento registrado: ${type === 'entry' ? 'Entrada' : 'Salida'} de ${quantity} unidades de ${currentScannedProduct.nombre}`, 'success');
+                        // Actualizar la vista con el resultado
+                        document.getElementById('barcode-actions').style.display = 'none';
+                        document.getElementById('barcode-result').innerHTML = `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> Movimiento registrado correctamente
+                            </div>
+                            <p><strong>Producto:</strong> ${currentScannedProduct.nombre}</p>
+                            <p><strong>Tipo:</strong> ${type === 'entry' ? 'Entrada' : 'Salida'}</p>
+                            <p><strong>Cantidad:</strong> ${quantity}</p>
+                            <p><strong>Nuevo stock:</strong> ${data.new_stock}</p>
+                        `;
 
-                // Actualizar la vista
-                document.getElementById('barcode-actions').style.display = 'none';
-                document.getElementById('barcode-result').innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i> Movimiento registrado correctamente
-                </div>
-                <p><strong>Producto:</strong> ${currentScannedProduct.nombre}</p>
-                <p><strong>Tipo:</strong> ${type === 'entry' ? 'Entrada' : 'Salida'}</p>
-                <p><strong>Cantidad:</strong> ${quantity}</p>
-                <p><strong>Nuevo stock:</strong> ${products[productIndex].stock_actual}</p>
-            `;
-
-                // Volver a enfocar el campo de escaneo
-                document.getElementById('barcode-input').focus();
+                        // Volver a enfocar el campo de escaneo
+                        document.getElementById('barcode-input').focus();
+                    } else {
+                        showNotification('Error al procesar movimiento: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error de conexión al procesar movimiento', 'error');
+                });
             }
         </script>
 

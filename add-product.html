@@ -155,34 +155,47 @@
                 // Si estamos editando, cargar los datos del producto
                 const urlParams = new URLSearchParams(window.location.search);
                 const productId = urlParams.get('edit');
+                const barcodeParam = urlParams.get('barcode');
 
                 if (productId) {
                     loadProductData(productId);
+                } else if (barcodeParam) {
+                    // Si viene desde el escáner con un código de barras, pre-llenarlo
+                    document.getElementById('codigo').value = barcodeParam;
+                    document.getElementById('nombre').focus();
                 }
             });
 
             function loadSuppliers() {
-                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
-                const select = document.getElementById('proveedor');
-
-                select.innerHTML = '<option value="">Seleccione un proveedor...</option>' +
-                    suppliers.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+                fetch('api_suppliers.php?action=all')
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        const select = document.getElementById('proveedor');
+                        select.innerHTML = '<option value="">Seleccione un proveedor...</option>' +
+                            data.data.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+                    }
+                })
+                .catch(error => console.error('Error loading suppliers:', error));
             }
 
             function loadProductData(id) {
-                const products = JSON.parse(localStorage.getItem('products')) || [];
-                const product = products.find(p => p.id == id);
-
-                if (product) {
-                    document.getElementById('nombre').value = product.nombre;
-                    document.getElementById('codigo').value = product.codigo || '';
-                    document.getElementById('descripcion').value = product.descripcion || '';
-                    document.getElementById('categoria').value = product.categoria;
-                    document.getElementById('proveedor').value = product.proveedor_id || '';
-                    document.getElementById('stock').value = product.stock_actual;
-                    document.getElementById('stock_minimo').value = product.stock_minimo;
-                    document.getElementById('precio').value = product.precio || '';
-                }
+                fetch(`api_products.php?action=single&id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success && data.data) {
+                        const product = data.data;
+                        document.getElementById('nombre').value = product.nombre;
+                        document.getElementById('codigo').value = product.codigo || '';
+                        document.getElementById('descripcion').value = product.descripcion || '';
+                        document.getElementById('categoria').value = product.categoria;
+                        document.getElementById('proveedor').value = product.proveedor_id || '';
+                        document.getElementById('stock').value = product.stock_actual;
+                        document.getElementById('stock_minimo').value = product.stock_minimo;
+                        document.getElementById('precio').value = product.precio || '';
+                    }
+                })
+                .catch(error => console.error('Error loading product:', error));
             }
 
             function setupProductForm() {
@@ -203,7 +216,6 @@
 
                     // Obtener datos del formulario
                     const productData = {
-                        id: 0,
                         nombre: nombre,
                         codigo: document.getElementById('codigo').value || null,
                         descripcion: document.getElementById('descripcion').value || null,
@@ -211,56 +223,55 @@
                         proveedor_id: document.getElementById('proveedor').value ? parseInt(document.getElementById('proveedor').value) : null,
                         stock_actual: parseInt(document.getElementById('stock').value),
                         stock_minimo: parseInt(document.getElementById('stock_minimo').value) || 5,
-                        precio: parseFloat(document.getElementById('precio').value) || null,
-                        created_at: new Date().toISOString().split('T')[0]
+                        precio: parseFloat(document.getElementById('precio').value) || null
                     };
 
                     // Determinar si es nuevo o edición
                     const urlParams = new URLSearchParams(window.location.search);
                     const productId = urlParams.get('edit');
-                    const products = JSON.parse(localStorage.getItem('products')) || [];
 
                     if (productId) {
                         // Edición
                         productData.id = parseInt(productId);
-                        const index = products.findIndex(p => p.id == productId);
-
-                        if (index !== -1) {
-                            products[index] = productData;
-                            showNotification('Producto actualizado exitosamente!', 'success');
-                        }
+                        fetch('api_products.php?action=update', {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(productData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if(data.success) {
+                                showNotification('Producto actualizado exitosamente!', 'success');
+                                setTimeout(() => { window.location.href = 'inventory.html'; }, 1000);
+                            } else {
+                                showNotification('Error al actualizar producto: ' + data.error, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showNotification('Error de conexión', 'error');
+                        });
                     } else {
                         // Nuevo producto
-                        productData.id = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-                        products.push(productData);
-                        showNotification('Producto registrado exitosamente!', 'success');
-
-                        // Registrar movimiento inicial si el stock es mayor a 0
-                        if (productData.stock_actual > 0) {
-                            const movements = JSON.parse(localStorage.getItem('movements')) || [];
-                            const newMovement = {
-                                id: movements.length > 0 ? Math.max(...movements.map(m => m.id)) + 1 : 1,
-                                producto_id: productData.id,
-                                tipo: 'entry',
-                                producto: productData.nombre,
-                                cantidad: productData.stock_actual,
-                                motivo: 'Stock inicial',
-                                usuario: 'admin', // Esto debería ser el usuario actual
-                                fecha: new Date().toISOString().split('T')[0]
-                            };
-
-                            movements.unshift(newMovement);
-                            localStorage.setItem('movements', JSON.stringify(movements));
-                        }
+                        fetch('api_products.php?action=add', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(productData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if(data.success) {
+                                showNotification('Producto registrado exitosamente!', 'success');
+                                setTimeout(() => { window.location.href = 'inventory.html'; }, 1000);
+                            } else {
+                                showNotification('Error al registrar producto: ' + data.error, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showNotification('Error de conexión', 'error');
+                        });
                     }
-
-                    // Guardar cambios
-                    localStorage.setItem('products', JSON.stringify(products));
-
-                    // Redirigir al inventario después de 1 segundo
-                    setTimeout(() => {
-                        window.location.href = 'inventory.html';
-                    }, 1000);
                 });
             }
 
