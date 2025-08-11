@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos con Stock Bajo - Sistema de Gestión de Inventario</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://via.placeholder.com/40" alt="Logo">
+            <span>Inventario</span>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="index.html">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="inventory.html" class="active">
+                <i class="fas fa-box-open"></i>
+                <span>Inventario</span>
+            </a>
+            <a href="add-product.html">
+                <i class="fas fa-plus-circle"></i>
+                <span>Agregar Producto</span>
+            </a>
+            <a href="movements.html">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Movimientos</span>
+            </a>
+            <a href="suppliers.html">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            <a href="barcode.html">
+                <i class="fas fa-barcode"></i>
+                <span>Escanear</span>
+            </a>
+            <a href="reports.html">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h2 id="current-section-title">Inventario</h2>
+            <div class="user-info">
+                <img src="https://via.placeholder.com/40" alt="User">
+                <span>Administrador</span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </div>
+
+
+        <div class="content-section">
+            <div class="report-container">
+                <h1><i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo</h1>
+                <p>Generado el <span id="report-date"></span> por <span id="report-user">admin</span></p>
+
+                <div id="low-stock-content">
+                    <!-- El contenido se cargará dinámicamente -->
+                </div>
+
+                <div class="report-actions">
+                    <button class="btn btn-primary" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                    <button class="btn btn-success" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir Reporte
+                    </button>
+                    <button class="btn btn-warning" onclick="sendLowStockAlert()">
+                        <i class="fas fa-bell"></i> Enviar Alerta
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.href='reports.html'">
+                        <i class="fas fa-arrow-left"></i> Volver a Reportes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Establecer fecha actual
+                document.getElementById('report-date').textContent = new Date().toLocaleDateString('es-ES');
+
+                // Cargar datos del reporte
+                loadLowStockReport();
+            });
+
+            function loadLowStockReport() {
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+
+                const lowStockProducts = products.filter(p => p.stock_actual <= p.stock_minimo);
+                const contentDiv = document.getElementById('low-stock-content');
+
+                if (lowStockProducts.length === 0) {
+                    contentDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> No hay productos con stock bajo actualmente.
+                    </div>
+                `;
+                    return;
+                }
+
+                contentDiv.innerHTML = `
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Proveedor</th>
+                                <th>Stock Actual</th>
+                                <th>Stock Mínimo</th>
+                                <th>Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${lowStockProducts.map(product => {
+                    const difference = product.stock_minimo - product.stock_actual;
+                    const supplier = suppliers.find(s => s.id === product.proveedor_id);
+                    return `
+                                    <tr>
+                                        <td>${product.id}</td>
+                                        <td>${product.nombre}</td>
+                                        <td>${product.categoria}</td>
+                                        <td>${supplier ? supplier.nombre : 'N/A'}</td>
+                                        <td class="text-danger">${product.stock_actual}</td>
+                                        <td>${product.stock_minimo}</td>
+                                        <td class="text-danger">+${difference}</td>
+                                    </tr>
+                                `;
+                }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="report-summary">
+                    <p><strong>Total productos con stock bajo:</strong> ${lowStockProducts.length}</p>
+                    <p><strong>Productos que necesitan reposición urgente (stock = 0):</strong> 
+                        ${products.filter(p => p.stock_actual === 0).length}
+                    </p>
+                </div>
+            `;
+            }
+
+            function sendLowStockAlert() {
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+                const lowStockCount = products.filter(p => p.stock_actual <= p.stock_minimo).length;
+
+                if (lowStockCount === 0) {
+                    showNotification('No hay productos con stock bajo para alertar', 'warning');
+                    return;
+                }
+
+                showNotification(`Alerta de stock bajo enviada a los proveedores (${lowStockCount} productos)`, 'success');
+            }
+
+            function exportToExcel() {
+                showNotification('Reporte de stock bajo exportado a Excel correctamente', 'success');
+            }
+        </script>
+    </div>    
+</body>
+
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar Producto - Sistema de Gestión de Inventario</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://via.placeholder.com/40" alt="Logo">
+            <span>Inventario</span>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="index.html" class="active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="inventory.html">
+                <i class="fas fa-box-open"></i>
+                <span>Inventario</span>
+            </a>
+            <a href="add-product.html">
+                <i class="fas fa-plus-circle"></i>
+                <span>Agregar Producto</span>
+            </a>
+            <a href="movements.html">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Movimientos</span>
+            </a>
+            <a href="suppliers.html">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            <a href="barcode.html">
+                <i class="fas fa-barcode"></i>
+                <span>Escanear</span>
+            </a>
+            <a href="reports.html">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h2 id="current-section-title">Dashboard</h2>
+            <div class="user-info">
+                <img src="https://via.placeholder.com/40" alt="User">
+                <span>Administrador</span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </div>
+
+
+        <div class="content-section" id="add-product">
+            <div class="form-container">
+                <h1><i class="fas fa-plus-circle"></i> ${window.location.search.includes('edit') ? 'Editar' :
+                    'Registrar'} Producto</h1>
+                <form id="product-form">
+                    <div class="form-group">
+                        <label for="nombre" class="required-field">Nombre del Producto</label>
+                        <input type="text" id="nombre" name="nombre" class="form-control" required
+                            placeholder="Ej: Teclado inalámbrico Logitech">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="codigo">Código de Barras</label>
+                        <div class="input-group">
+                            <input type="text" id="codigo" name="codigo" class="form-control"
+                                placeholder="Escanea o ingresa manualmente">
+                            <button type="button" class="btn btn-primary" onclick="focusBarcodeInput()">
+                                <i class="fas fa-barcode"></i> Escanear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descripcion">Descripción</label>
+                        <textarea id="descripcion" name="descripcion" class="form-control"
+                            placeholder="Descripción detallada del producto"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="categoria" class="required-field">Categoría</label>
+                        <select id="categoria" name="categoria" class="form-control" required>
+                            <option value="">Seleccione una categoría...</option>
+                            <option value="Computadoras">Computadoras</option>
+                            <option value="Periféricos">Periféricos</option>
+                            <option value="Monitores">Monitores</option>
+                            <option value="Suministros">Suministros</option>
+                            <option value="Software">Software</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proveedor">Proveedor</label>
+                        <select id="proveedor" name="proveedor" class="form-control">
+                            <option value="">Seleccione un proveedor...</option>
+                            <!-- Proveedores se cargarán dinámicamente -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stock" class="required-field">Stock Inicial</label>
+                            <input type="number" id="stock" name="stock" class="form-control" required min="0"
+                                value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="stock_minimo">Stock Mínimo</label>
+                            <input type="number" id="stock_minimo" name="stock_minimo" class="form-control" min="0"
+                                value="5">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="precio">Precio Unitario</label>
+                            <input type="number" id="precio" name="precio" class="form-control" min="0" step="0.01"
+                                placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Producto
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="window.location.href='inventory.html'">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                loadSuppliers();
+                setupProductForm();
+
+                // Si estamos editando, cargar los datos del producto
+                const urlParams = new URLSearchParams(window.location.search);
+                const productId = urlParams.get('edit');
+
+                if (productId) {
+                    loadProductData(productId);
+                }
+            });
+
+            function loadSuppliers() {
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const select = document.getElementById('proveedor');
+
+                select.innerHTML = '<option value="">Seleccione un proveedor...</option>' +
+                    suppliers.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+            }
+
+            function loadProductData(id) {
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+                const product = products.find(p => p.id == id);
+
+                if (product) {
+                    document.getElementById('nombre').value = product.nombre;
+                    document.getElementById('codigo').value = product.codigo || '';
+                    document.getElementById('descripcion').value = product.descripcion || '';
+                    document.getElementById('categoria').value = product.categoria;
+                    document.getElementById('proveedor').value = product.proveedor_id || '';
+                    document.getElementById('stock').value = product.stock_actual;
+                    document.getElementById('stock_minimo').value = product.stock_minimo;
+                    document.getElementById('precio').value = product.precio || '';
+                }
+            }
+
+            function setupProductForm() {
+                const form = document.getElementById('product-form');
+
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    // Validación
+                    const nombre = document.getElementById('nombre').value;
+                    const categoria = document.getElementById('categoria').value;
+                    const stock = document.getElementById('stock').value;
+
+                    if (!nombre || !categoria || stock === '') {
+                        showNotification('Por favor complete todos los campos requeridos (*)', 'error');
+                        return;
+                    }
+
+                    // Obtener datos del formulario
+                    const productData = {
+                        id: 0,
+                        nombre: nombre,
+                        codigo: document.getElementById('codigo').value || null,
+                        descripcion: document.getElementById('descripcion').value || null,
+                        categoria: categoria,
+                        proveedor_id: document.getElementById('proveedor').value ? parseInt(document.getElementById('proveedor').value) : null,
+                        stock_actual: parseInt(document.getElementById('stock').value),
+                        stock_minimo: parseInt(document.getElementById('stock_minimo').value) || 5,
+                        precio: parseFloat(document.getElementById('precio').value) || null,
+                        created_at: new Date().toISOString().split('T')[0]
+                    };
+
+                    // Determinar si es nuevo o edición
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const productId = urlParams.get('edit');
+                    const products = JSON.parse(localStorage.getItem('products')) || [];
+
+                    if (productId) {
+                        // Edición
+                        productData.id = parseInt(productId);
+                        const index = products.findIndex(p => p.id == productId);
+
+                        if (index !== -1) {
+                            products[index] = productData;
+                            showNotification('Producto actualizado exitosamente!', 'success');
+                        }
+                    } else {
+                        // Nuevo producto
+                        productData.id = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                        products.push(productData);
+                        showNotification('Producto registrado exitosamente!', 'success');
+
+                        // Registrar movimiento inicial si el stock es mayor a 0
+                        if (productData.stock_actual > 0) {
+                            const movements = JSON.parse(localStorage.getItem('movements')) || [];
+                            const newMovement = {
+                                id: movements.length > 0 ? Math.max(...movements.map(m => m.id)) + 1 : 1,
+                                producto_id: productData.id,
+                                tipo: 'entry',
+                                producto: productData.nombre,
+                                cantidad: productData.stock_actual,
+                                motivo: 'Stock inicial',
+                                usuario: 'admin', // Esto debería ser el usuario actual
+                                fecha: new Date().toISOString().split('T')[0]
+                            };
+
+                            movements.unshift(newMovement);
+                            localStorage.setItem('movements', JSON.stringify(movements));
+                        }
+                    }
+
+                    // Guardar cambios
+                    localStorage.setItem('products', JSON.stringify(products));
+
+                    // Redirigir al inventario después de 1 segundo
+                    setTimeout(() => {
+                        window.location.href = 'inventory.html';
+                    }, 1000);
+                });
+            }
+
+            function focusBarcodeInput() {
+                document.getElementById('codigo').focus();
+                showNotification('Listo para escanear. Escanea el código de barras.', 'success');
+            }
+        </script>
+
+    </div>    
+    
+</body>
+
+</html>

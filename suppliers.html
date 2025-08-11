@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proveedores - Sistema de Gestión de Inventario</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://via.placeholder.com/40" alt="Logo">
+            <span>Inventario</span>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="index.html">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="inventory.html" class="active">
+                <i class="fas fa-box-open"></i>
+                <span>Inventario</span>
+            </a>
+            <a href="add-product.html">
+                <i class="fas fa-plus-circle"></i>
+                <span>Agregar Producto</span>
+            </a>
+            <a href="movements.html">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Movimientos</span>
+            </a>
+            <a href="suppliers.html">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            <a href="barcode.html">
+                <i class="fas fa-barcode"></i>
+                <span>Escanear</span>
+            </a>
+            <a href="reports.html">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h2 id="current-section-title">Inventario</h2>
+            <div class="user-info">
+                <img src="https://via.placeholder.com/40" alt="User">
+                <span>Administrador</span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </div>
+
+
+
+
+        <div class="content-section" id="suppliers">
+            <div class="supplier-header">
+                <h1><i class="fas fa-truck"></i> Gestión de Proveedores</h1>
+                <button class="btn btn-primary" onclick="showAddSupplierForm()">
+                    <i class="fas fa-plus"></i> Nuevo Proveedor
+                </button>
+            </div>
+
+            <div id="supplier-form-container" style="display: none;">
+                <!-- Formulario se cargará aquí dinámicamente -->
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Contacto</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Productos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="suppliers-table-body">
+                        <!-- Los proveedores se cargarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                loadSuppliers();
+            });
+
+            function loadSuppliers() {
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+
+                const tbody = document.getElementById('suppliers-table-body');
+                tbody.innerHTML = suppliers.map(supplier => {
+                    const productCount = products.filter(p => p.proveedor_id === supplier.id).length;
+                    return `
+                    <tr>
+                        <td>${supplier.id}</td>
+                        <td>${supplier.nombre}</td>
+                        <td>${supplier.contacto || 'N/A'}</td>
+                        <td>${supplier.telefono || 'N/A'}</td>
+                        <td>${supplier.email || 'N/A'}</td>
+                        <td>${productCount}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="editSupplier(${supplier.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="confirmDeleteSupplier(${supplier.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                }).join('');
+            }
+
+            function showAddSupplierForm() {
+                const container = document.getElementById('supplier-form-container');
+                container.style.display = 'block';
+                container.innerHTML = `
+                <div class="form-container">
+                    <h2><i class="fas fa-plus"></i> Nuevo Proveedor</h2>
+                    <form id="supplier-form">
+                        <div class="form-group">
+                            <label for="supplier-name" class="required-field">Nombre del Proveedor</label>
+                            <input type="text" id="supplier-name" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="supplier-contact">Persona de Contacto</label>
+                                <input type="text" id="supplier-contact" class="form-control">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="supplier-phone">Teléfono</label>
+                                <input type="text" id="supplier-phone" class="form-control">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="supplier-email">Email</label>
+                            <input type="email" id="supplier-email" class="form-control">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="supplier-address">Dirección</label>
+                            <textarea id="supplier-address" class="form-control" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" onclick="saveSupplier()">
+                                <i class="fas fa-save"></i> Guardar Proveedor
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="cancelSupplierForm()">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            }
+
+            function saveSupplier() {
+                const name = document.getElementById('supplier-name').value;
+                if (!name) {
+                    showNotification('El nombre del proveedor es requerido', 'error');
+                    return;
+                }
+
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const newSupplier = {
+                    id: suppliers.length > 0 ? Math.max(...suppliers.map(s => s.id)) + 1 : 1,
+                    nombre: name,
+                    contacto: document.getElementById('supplier-contact').value || null,
+                    telefono: document.getElementById('supplier-phone').value || null,
+                    email: document.getElementById('supplier-email').value || null,
+                    direccion: document.getElementById('supplier-address').value || null,
+                    created_at: new Date().toISOString().split('T')[0]
+                };
+
+                suppliers.push(newSupplier);
+                localStorage.setItem('suppliers', JSON.stringify(suppliers));
+
+                showNotification('Proveedor registrado exitosamente', 'success');
+                document.getElementById('supplier-form-container').style.display = 'none';
+                loadSuppliers();
+            }
+
+            function cancelSupplierForm() {
+                document.getElementById('supplier-form-container').style.display = 'none';
+            }
+
+            function editSupplier(id) {
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const supplier = suppliers.find(s => s.id === id);
+
+                if (!supplier) return;
+
+                const container = document.getElementById('supplier-form-container');
+                container.style.display = 'block';
+                container.innerHTML = `
+                <div class="form-container">
+                    <h2><i class="fas fa-edit"></i> Editar Proveedor</h2>
+                    <form id="supplier-form">
+                        <div class="form-group">
+                            <label for="supplier-name" class="required-field">Nombre del Proveedor</label>
+                            <input type="text" id="supplier-name" class="form-control" value="${supplier.nombre}" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="supplier-contact">Persona de Contacto</label>
+                                <input type="text" id="supplier-contact" class="form-control" value="${supplier.contacto || ''}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="supplier-phone">Teléfono</label>
+                                <input type="text" id="supplier-phone" class="form-control" value="${supplier.telefono || ''}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="supplier-email">Email</label>
+                            <input type="email" id="supplier-email" class="form-control" value="${supplier.email || ''}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="supplier-address">Dirección</label>
+                            <textarea id="supplier-address" class="form-control" rows="2">${supplier.direccion || ''}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" onclick="updateSupplier(${supplier.id})">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="cancelSupplierForm()">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            }
+
+            function updateSupplier(id) {
+                const name = document.getElementById('supplier-name').value;
+                if (!name) {
+                    showNotification('El nombre del proveedor es requerido', 'error');
+                    return;
+                }
+
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const index = suppliers.findIndex(s => s.id === id);
+
+                if (index !== -1) {
+                    suppliers[index] = {
+                        ...suppliers[index],
+                        nombre: name,
+                        contacto: document.getElementById('supplier-contact').value || null,
+                        telefono: document.getElementById('supplier-phone').value || null,
+                        email: document.getElementById('supplier-email').value || null,
+                        direccion: document.getElementById('supplier-address').value || null
+                    };
+
+                    localStorage.setItem('suppliers', JSON.stringify(suppliers));
+                    showNotification('Proveedor actualizado exitosamente', 'success');
+                    document.getElementById('supplier-form-container').style.display = 'none';
+                    loadSuppliers();
+                }
+            }
+
+            function confirmDeleteSupplier(id) {
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+
+                const supplier = suppliers.find(s => s.id === id);
+                if (!supplier) return;
+
+                // Verificar si el proveedor tiene productos asociados
+                const hasProducts = products.some(p => p.proveedor_id === id);
+
+                if (hasProducts) {
+                    showNotification('No se puede eliminar el proveedor porque tiene productos asociados', 'error');
+                    return;
+                }
+
+                if (confirm(`¿Estás seguro de que deseas eliminar el proveedor "${supplier.nombre}"?`)) {
+                    const updatedSuppliers = suppliers.filter(s => s.id !== id);
+                    localStorage.setItem('suppliers', JSON.stringify(updatedSuppliers));
+                    loadSuppliers();
+                    showNotification('Proveedor eliminado correctamente', 'success');
+                }
+            }
+        </script>
+    </div>
+
+
+</body>
+
+</html>

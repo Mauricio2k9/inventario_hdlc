@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escanear - Sistema de Gestión de Inventario</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://via.placeholder.com/40" alt="Logo">
+            <span>Inventario</span>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="index.html" class="active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="inventory.html">
+                <i class="fas fa-box-open"></i>
+                <span>Inventario</span>
+            </a>
+            <a href="add-product.html">
+                <i class="fas fa-plus-circle"></i>
+                <span>Agregar Producto</span>
+            </a>
+            <a href="movements.html">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Movimientos</span>
+            </a>
+            <a href="suppliers.html">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            <a href="barcode.html">
+                <i class="fas fa-barcode"></i>
+                <span>Escanear</span>
+            </a>
+            <a href="reports.html">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h2 id="current-section-title">Dashboard</h2>
+            <div class="user-info">
+                <img src="https://via.placeholder.com/40" alt="User">
+                <span>Administrador</span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </div>
+
+
+
+        <div class="content-section" id="barcode">
+            <h1><i class="fas fa-barcode"></i> Escáner de Códigos de Barras</h1>
+            <div class="barcode-scanner">
+                <div class="scanner-container">
+                    <h3><i class="fas fa-barcode"></i> Modo Escáner Activo</h3>
+                    <p>Conecte su lector de códigos de barras y escanee un producto</p>
+                    <div style="margin: 20px 0;">
+                        <input type="text" id="barcode-input" class="form-control"
+                            placeholder="El código aparecerá aquí automáticamente"
+                            style="text-align: center; font-size: 1.2rem;">
+                    </div>
+                    <p><i class="fas fa-info-circle"></i> El sistema detectará automáticamente el código escaneado</p>
+                </div>
+
+                <div class="barcode-result" id="barcode-result">
+                    <p>Escanea un código de barras para registrar entrada/salida de producto</p>
+                </div>
+
+                <div class="barcode-actions" id="barcode-actions" style="display: none;">
+                    <div class="form-group">
+                        <label for="barcode-quantity">Cantidad</label>
+                        <input type="number" id="barcode-quantity" class="form-control" min="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="barcode-type">Tipo de Movimiento</label>
+                        <select id="barcode-type" class="form-control">
+                            <option value="entry">Entrada</option>
+                            <option value="exit">Salida</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="barcode-reason">Motivo</label>
+                        <input type="text" id="barcode-reason" class="form-control"
+                            placeholder="Ej: Compra, Venta, Ajuste">
+                    </div>
+
+                    <button class="btn btn-success" onclick="processBarcodeMovement()">
+                        <i class="fas fa-check"></i> Confirmar Movimiento
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script>
+            let currentScannedProduct = null;
+
+            document.addEventListener('DOMContentLoaded', function () {
+                setupBarcodeScanner();
+            });
+
+            function setupBarcodeScanner() {
+                const barcodeInput = document.getElementById('barcode-input');
+                if (barcodeInput) {
+                    barcodeInput.addEventListener('keypress', function (e) {
+                        if (e.key === 'Enter') {
+                            const code = barcodeInput.value.trim();
+                            if (code) {
+                                processScannedBarcode(code);
+                                barcodeInput.value = '';
+                            }
+                        }
+                    });
+
+                    // Enfocar automáticamente el campo de entrada al cargar la sección
+                    barcodeInput.focus();
+                }
+            }
+
+            function processScannedBarcode(code) {
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+                const product = products.find(p => p.codigo === code);
+                currentScannedProduct = product;
+
+                const resultDiv = document.getElementById('barcode-result');
+                const actionsDiv = document.getElementById('barcode-actions');
+
+                if (product) {
+                    resultDiv.innerHTML = `
+                    <h4>Producto encontrado:</h4>
+                    <p><strong>Nombre:</strong> ${product.nombre}</p>
+                    <p><strong>Código:</strong> ${product.codigo}</p>
+                    <p><strong>Stock actual:</strong> ${product.stock_actual}</p>
+                `;
+
+                    // Mostrar acciones para entrada/salida
+                    actionsDiv.style.display = 'block';
+                    document.getElementById('barcode-quantity').value = 1;
+                    document.getElementById('barcode-type').value = 'entry';
+                    document.getElementById('barcode-reason').value = '';
+
+                    // Enfocar el campo de cantidad
+                    document.getElementById('barcode-quantity').focus();
+                } else {
+                    resultDiv.innerHTML = `
+                    <h4>Producto no registrado</h4>
+                    <p>El código de barras ${code} no está asociado a ningún producto.</p>
+                    <button class="btn btn-primary" onclick="registerNewProductFromBarcode('${code}')">
+                        <i class="fas fa-plus"></i> Registrar nuevo producto
+                    </button>
+                `;
+                    actionsDiv.style.display = 'none';
+                }
+
+                // Volver a enfocar el campo de escaneo
+                document.getElementById('barcode-input').focus();
+            }
+
+            function registerNewProductFromBarcode(barcode) {
+                window.location.href = `add-product.html?barcode=${barcode}`;
+            }
+
+            function processBarcodeMovement() {
+                if (!currentScannedProduct) return;
+
+                const quantity = parseInt(document.getElementById('barcode-quantity').value);
+                const type = document.getElementById('barcode-type').value;
+                const reason = document.getElementById('barcode-reason').value || 'Movimiento por escáner';
+
+                if (isNaN(quantity) || quantity <= 0) {
+                    showNotification('La cantidad debe ser un número positivo', 'error');
+                    return;
+                }
+
+                // Actualizar productos
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+                const productIndex = products.findIndex(p => p.codigo === currentScannedProduct.codigo);
+
+                if (productIndex === -1) return;
+
+                if (type === 'entry') {
+                    products[productIndex].stock_actual += quantity;
+                } else {
+                    if (products[productIndex].stock_actual < quantity) {
+                        showNotification('No hay suficiente stock para este movimiento', 'error');
+                        return;
+                    }
+                    products[productIndex].stock_actual -= quantity;
+                }
+
+                localStorage.setItem('products', JSON.stringify(products));
+
+                // Registrar movimiento
+                const movements = JSON.parse(localStorage.getItem('movements')) || [];
+                const newMovement = {
+                    id: movements.length > 0 ? Math.max(...movements.map(m => m.id)) + 1 : 1,
+                    producto_id: currentScannedProduct.id,
+                    tipo: type,
+                    producto: currentScannedProduct.nombre,
+                    cantidad: quantity,
+                    motivo: reason,
+                    usuario: 'admin', // Esto debería ser el usuario actual
+                    fecha: new Date().toISOString().split('T')[0]
+                };
+
+                movements.unshift(newMovement);
+                localStorage.setItem('movements', JSON.stringify(movements));
+
+                showNotification(`Movimiento registrado: ${type === 'entry' ? 'Entrada' : 'Salida'} de ${quantity} unidades de ${currentScannedProduct.nombre}`, 'success');
+
+                // Actualizar la vista
+                document.getElementById('barcode-actions').style.display = 'none';
+                document.getElementById('barcode-result').innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> Movimiento registrado correctamente
+                </div>
+                <p><strong>Producto:</strong> ${currentScannedProduct.nombre}</p>
+                <p><strong>Tipo:</strong> ${type === 'entry' ? 'Entrada' : 'Salida'}</p>
+                <p><strong>Cantidad:</strong> ${quantity}</p>
+                <p><strong>Nuevo stock:</strong> ${products[productIndex].stock_actual}</p>
+            `;
+
+                // Volver a enfocar el campo de escaneo
+                document.getElementById('barcode-input').focus();
+            }
+        </script>
+
+    </div>
+        
+</body>
+
+</html>

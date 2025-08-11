@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Proveedores - Sistema de Gestión de Inventario</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://via.placeholder.com/40" alt="Logo">
+            <span>Inventario</span>
+        </div>
+
+        <div class="sidebar-menu">
+            <a href="index.html">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="inventory.html" class="active">
+                <i class="fas fa-box-open"></i>
+                <span>Inventario</span>
+            </a>
+            <a href="add-product.html">
+                <i class="fas fa-plus-circle"></i>
+                <span>Agregar Producto</span>
+            </a>
+            <a href="movements.html">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Movimientos</span>
+            </a>
+            <a href="suppliers.html">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            <a href="barcode.html">
+                <i class="fas fa-barcode"></i>
+                <span>Escanear</span>
+            </a>
+            <a href="reports.html">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h2 id="current-section-title">Inventario</h2>
+            <div class="user-info">
+                <img src="https://via.placeholder.com/40" alt="User">
+                <span>Administrador</span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </button>
+            </div>
+        </div>
+
+
+
+
+
+        <div class="content-section">
+            <div class="report-container">
+                <h1><i class="fas fa-truck"></i> Reporte de Proveedores</h1>
+                <p>Generado el <span id="report-date"></span> por <span id="report-user">admin</span></p>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Proveedor</th>
+                                <th>Contacto</th>
+                                <th>Productos</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliers-report-body">
+                            <!-- Los proveedores se cargarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="report-summary">
+                    <p><strong>Total proveedores:</strong> <span id="total-suppliers">0</span></p>
+                    <p><strong>Productos registrados:</strong> <span id="total-products">0</span></p>
+                </div>
+
+                <div class="report-actions">
+                    <button class="btn btn-primary" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                    <button class="btn btn-success" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir Reporte
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.location.href='reports.html'">
+                        <i class="fas fa-arrow-left"></i> Volver a Reportes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Establecer fecha actual
+                document.getElementById('report-date').textContent = new Date().toLocaleDateString('es-ES');
+
+                // Cargar datos del reporte
+                loadSuppliersReport();
+            });
+
+            function loadSuppliersReport() {
+                const suppliers = JSON.parse(localStorage.getItem('suppliers')) || [];
+                const products = JSON.parse(localStorage.getItem('products')) || [];
+
+                const tbody = document.getElementById('suppliers-report-body');
+                tbody.innerHTML = suppliers.map(supplier => {
+                    const productCount = products.filter(p => p.proveedor_id === supplier.id).length;
+                    return `
+                    <tr>
+                        <td>${supplier.id}</td>
+                        <td>${supplier.nombre}</td>
+                        <td>${supplier.contacto || 'N/A'}</td>
+                        <td>${productCount}</td>
+                        <td>${supplier.telefono || 'N/A'}</td>
+                        <td>${supplier.email || 'N/A'}</td>
+                    </tr>
+                `;
+                }).join('');
+
+                // Actualizar resumen
+                document.getElementById('total-suppliers').textContent = suppliers.length;
+                document.getElementById('total-products').textContent = products.length;
+            }
+
+            function exportToExcel() {
+                showNotification('Reporte de proveedores exportado a Excel correctamente', 'success');
+            }
+        </script>
+
+    </div>  
+        
+</body>
+
+</html>
